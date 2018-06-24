@@ -10,19 +10,40 @@ public class MessageVerifierC10KTest {
     private static final String TestServerHost = "localhost";
     private static final int TestServerPort = 8080;
     private static final int RequestCount = 10000;
-    private static final InetSocketAddress InetSocketAddress = new InetSocketAddress(TestServerHost, TestServerPort);
 
     public static void main(String args[]) {
-        int i;
+        String givenHost;
+        int givenPort, i;
+        InetSocketAddress inetSocketAddress;
+
+        givenHost = TestServerHost;
+        givenPort = TestServerPort;
+
+        if (args.length > 0) {
+            String previousKey = args[0];
+            for(i = 1 ;i < args.length; i++){
+                switch (previousKey) {
+                    case "-host":
+                        givenHost = args[i];
+                        break;
+                    case "-port":
+                        givenPort = Integer.parseInt(args[i]);
+                        break;
+                }
+                previousKey = args[i];
+            }
+        }
+
         Thread threads[];
         CountDownLatch requestsLatch, successLatch;
+        inetSocketAddress = new InetSocketAddress(givenHost, givenPort);
 
         threads = new Thread[RequestCount];
         requestsLatch = new CountDownLatch(RequestCount);
         successLatch = new CountDownLatch(RequestCount);
 
         for (i = 0; i < RequestCount; i++) {
-            threads[i] = new Thread(new SimpleTest(requestsLatch, successLatch));
+            threads[i] = new Thread(new SimpleTest(inetSocketAddress, requestsLatch, successLatch));
             threads[i].start();
         }
 
@@ -37,9 +58,11 @@ public class MessageVerifierC10KTest {
     }
 
     private static class SimpleTest implements Runnable {
+        private InetSocketAddress inetSocketAddress;
         private CountDownLatch requestsLatch, successLatch;
 
-        private SimpleTest(CountDownLatch requestsLatch, CountDownLatch successLatch) {
+        private SimpleTest(InetSocketAddress inetSocketAddress, CountDownLatch requestsLatch, CountDownLatch successLatch) {
+            this.inetSocketAddress = inetSocketAddress;
             this.requestsLatch = requestsLatch;
             this.successLatch = successLatch;
         }
@@ -47,7 +70,7 @@ public class MessageVerifierC10KTest {
         @Override
         public void run() {
             try {
-                if (TestUtility.singleRequestTest(InetSocketAddress)) {
+                if (TestUtility.singleRequestTest(this.inetSocketAddress)) {
                     this.successLatch.countDown();
                 }
             }
