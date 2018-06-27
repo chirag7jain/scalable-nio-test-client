@@ -13,11 +13,12 @@ public class MessageVerifierC10KTest {
 
     public static void main(String args[]) {
         String givenHost;
-        int givenPort, i;
+        int givenPort, givenThreadCount, i;
         InetSocketAddress inetSocketAddress;
 
         givenHost = TestServerHost;
         givenPort = TestServerPort;
+        givenThreadCount = RequestCount;
 
         if (args.length > 0) {
             String previousKey = args[0];
@@ -29,6 +30,9 @@ public class MessageVerifierC10KTest {
                     case "-port":
                         givenPort = Integer.parseInt(args[i]);
                         break;
+                    case "-threads":
+                        givenThreadCount = Integer.parseInt(args[i]);
+                        break;
                 }
                 previousKey = args[i];
             }
@@ -38,11 +42,11 @@ public class MessageVerifierC10KTest {
         CountDownLatch requestsLatch, successLatch;
         inetSocketAddress = new InetSocketAddress(givenHost, givenPort);
 
-        threads = new Thread[RequestCount];
-        requestsLatch = new CountDownLatch(RequestCount);
-        successLatch = new CountDownLatch(RequestCount);
+        threads = new Thread[givenThreadCount];
+        requestsLatch = new CountDownLatch(givenThreadCount);
+        successLatch = new CountDownLatch(givenThreadCount);
 
-        for (i = 0; i < RequestCount; i++) {
+        for (i = 0; i < givenThreadCount; i++) {
             threads[i] = new Thread(new SimpleTest(inetSocketAddress, requestsLatch, successLatch));
             threads[i].start();
         }
