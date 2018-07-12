@@ -15,7 +15,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TestUtility {
-    private static final int MaxMessageLength = 1000;
     private static final String TestChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789~!@#$%^&*()_+";
     private static final int TestCharsLength = TestChars.length();
 
@@ -28,7 +27,7 @@ public class TestUtility {
         return String.format("%040x", new BigInteger(1, messageDigest.digest()));
     }
 
-    private static String getRandomString(int count) {
+    private static String getRandomString(long count) {
         StringBuilder builder;
 
         builder = new StringBuilder();
@@ -43,31 +42,31 @@ public class TestUtility {
         return builder.toString();
     }
 
-    private static String getRandomMessageDataAsJSON(boolean success) throws UnsupportedEncodingException, NoSuchAlgorithmException {
+    private static String getRandomMessageDataAsJSON(long length) throws UnsupportedEncodingException, NoSuchAlgorithmException {
         String randomString, checkSum;
         MVRequest MVRequest;
 
-        randomString = getRandomString(ThreadLocalRandom.current().nextInt(100, MaxMessageLength));
+        randomString = getRandomString(length);
 
-        checkSum = (success) ? generatedSHA512(randomString) : "12345";
+        checkSum = generatedSHA512(randomString);
         MVRequest = new MVRequest(randomString, checkSum);
 
         return new Gson().toJson(MVRequest);
     }
 
-    private static String getRandomMessageAsJSON(boolean success) throws UnsupportedEncodingException, NoSuchAlgorithmException {
+    private static String getRandomMessageAsJSON(long length) throws UnsupportedEncodingException, NoSuchAlgorithmException {
         String body;
         RequestMessage requestMessage;
 
-        body = getRandomMessageDataAsJSON(success);
+        body = getRandomMessageDataAsJSON(length);
 
         requestMessage = new RequestMessage(body, "MessageVerifier");
         return new Gson().toJson(requestMessage);
     }
 
-    private static ByteBuffer getRandomMessageByteBuffer(boolean success)
+    private static ByteBuffer getRandomMessageByteBuffer(long length)
             throws UnsupportedEncodingException, NoSuchAlgorithmException {
-        return ByteBuffer.wrap(getRandomMessageAsJSON(success).getBytes());
+        return ByteBuffer.wrap(getRandomMessageAsJSON(length).getBytes());
     }
 
     private static boolean messageSuccess(ByteBuffer byteBuffer) {
@@ -88,13 +87,15 @@ public class TestUtility {
         return messageMVResponse.getStatus();
     }
 
-    public static boolean singleRequestTest(InetSocketAddress inetSocketAddress)
+    public static boolean singleRequestTest(InetSocketAddress inetSocketAddress, long length)
             throws IOException, NoSuchAlgorithmException {
         ByteBuffer byteBuffer;
+        SocketChannel socketChannel = null;
         boolean status;
 
-        try(SocketChannel socketChannel = SocketChannel.open(inetSocketAddress)) {
-            byteBuffer = TestUtility.getRandomMessageByteBuffer(true);
+        try {
+            byteBuffer = TestUtility.getRandomMessageByteBuffer(length);
+            socketChannel = SocketChannel.open(inetSocketAddress);
             while (byteBuffer.hasRemaining()) {
                 socketChannel.write(byteBuffer);
             }
@@ -102,6 +103,11 @@ public class TestUtility {
             socketChannel.read(byteBuffer);
 
             status = messageSuccess(byteBuffer);
+        }
+        finally {
+            if (socketChannel != null) {
+                socketChannel.close();
+            }
         }
 
         return status;

@@ -10,15 +10,18 @@ public class MessageVerifierC10KTest {
     private static final String TestServerHost = "localhost";
     private static final int TestServerPort = 8080;
     private static final int RequestCount = 10000;
+    private static final int MaxMessageLength = 1000;
 
     public static void main(String args[]) {
         String givenHost;
         int givenPort, givenThreadCount, i;
+        long givenMaxMessageLength;
         InetSocketAddress inetSocketAddress;
 
         givenHost = TestServerHost;
         givenPort = TestServerPort;
         givenThreadCount = RequestCount;
+        givenMaxMessageLength = MaxMessageLength;
 
         if (args.length > 0) {
             String previousKey = args[0];
@@ -32,6 +35,9 @@ public class MessageVerifierC10KTest {
                         break;
                     case "-threads":
                         givenThreadCount = Integer.parseInt(args[i]);
+                        break;
+                    case "-length":
+                        givenMaxMessageLength = Long.parseLong(args[i]);
                         break;
                 }
                 previousKey = args[i];
@@ -47,7 +53,7 @@ public class MessageVerifierC10KTest {
         successLatch = new CountDownLatch(givenThreadCount);
 
         for (i = 0; i < givenThreadCount; i++) {
-            threads[i] = new Thread(new SimpleTest(inetSocketAddress, requestsLatch, successLatch));
+            threads[i] = new Thread(new SimpleTest(inetSocketAddress, requestsLatch, successLatch, givenMaxMessageLength));
             threads[i].start();
         }
 
@@ -64,17 +70,20 @@ public class MessageVerifierC10KTest {
     private static class SimpleTest implements Runnable {
         private InetSocketAddress inetSocketAddress;
         private CountDownLatch requestsLatch, successLatch;
+        private long messageLength;
 
-        private SimpleTest(InetSocketAddress inetSocketAddress, CountDownLatch requestsLatch, CountDownLatch successLatch) {
+        private SimpleTest(InetSocketAddress inetSocketAddress, CountDownLatch requestsLatch,
+                           CountDownLatch successLatch, long messageLength) {
             this.inetSocketAddress = inetSocketAddress;
             this.requestsLatch = requestsLatch;
             this.successLatch = successLatch;
+            this.messageLength = messageLength;
         }
 
         @Override
         public void run() {
             try {
-                if (TestUtility.singleRequestTest(this.inetSocketAddress)) {
+                if (TestUtility.singleRequestTest(this.inetSocketAddress, messageLength)) {
                     this.successLatch.countDown();
                 }
             }
