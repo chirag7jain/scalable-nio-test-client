@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class MessageVerifierC10KTest {
 
@@ -15,7 +16,7 @@ public class MessageVerifierC10KTest {
     public static void main(String args[]) {
         String givenHost;
         int givenPort, givenThreadCount, i;
-        long givenMaxMessageLength;
+        long givenMaxMessageLength, startTime, endTime;
         InetSocketAddress inetSocketAddress;
 
         givenHost = TestServerHost;
@@ -52,6 +53,8 @@ public class MessageVerifierC10KTest {
         requestsLatch = new CountDownLatch(givenThreadCount);
         successLatch = new CountDownLatch(givenThreadCount);
 
+        startTime = System.nanoTime();
+
         for (i = 0; i < givenThreadCount; i++) {
             threads[i] = new Thread(new SimpleTest(inetSocketAddress, requestsLatch, successLatch, givenMaxMessageLength));
             threads[i].start();
@@ -59,7 +62,15 @@ public class MessageVerifierC10KTest {
 
         try {
             requestsLatch.await();
+            endTime = System.nanoTime();
             assert 0 == successLatch.getCount();
+
+            long timeTaken;
+
+            timeTaken = TimeUnit.SECONDS.convert(endTime - startTime, TimeUnit.NANOSECONDS);
+
+            System.out.print(String.format("Time taken for %d threads is %d seconds, length per msg was %d",
+                    givenThreadCount, timeTaken, givenMaxMessageLength));
         }
         catch (InterruptedException e) {
             e.printStackTrace();
